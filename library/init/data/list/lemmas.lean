@@ -93,6 +93,10 @@ by induction l; intros; contradiction
 
 attribute [simp] map
 
+@[simp]
+lemma map_nil (f : α → β) : map f [] = [] :=
+rfl
+
 lemma map_cons (f : α → β) (a l) : map f (a::l) = f a :: map f l :=
 rfl
 
@@ -153,6 +157,24 @@ by induction l; simph
 
 @[simp] lemma map_reverse (f : α → β) (l : list α) : map f (reverse l) = reverse (map f l) :=
 by induction l; simph
+
+lemma reverse_core_append' (xs ys zs : list α) :
+  reverse_core xs ys ++ zs = reverse_core xs (ys ++ zs) :=
+begin
+  revert ys,
+  induction xs with x xs H,
+  { intros, refl },
+  intros ys,
+  change reverse_core xs (x :: ys) ++ zs = _,
+  apply H,
+end
+
+lemma reverse_core_append (xs zs : list α) :
+  reverse_core xs nil ++ zs = reverse_core xs zs :=
+by simp [reverse_core_append']
+
+theorem reverse_to_cons : ∀ x (xs : list α), reverse (xs ++ [x]) = x :: reverse xs
+:= begin intros x xs, rw reverse_append, refl end
 
 /- last -/
 
@@ -359,6 +381,136 @@ take a, suppose a ∈ l₁ ++ l₂,
 or.elim (mem_or_mem_of_mem_append this)
   (suppose a ∈ l₁, l₁subl this)
   (suppose a ∈ l₂, l₂subl this)
+
+/- foldr -/
+
+section foldr
+
+variable f : α → β → β
+
+theorem foldr_nil (i : β) :
+  foldr f i nil = i
+:= rfl
+
+theorem foldr_cons (i : β) (x : α) (xs : list α) :
+  foldr f i (x :: xs) = f x (foldr f i xs)
+:= rfl
+
+theorem foldr_append (f : α → β → β) :
+  ∀ (b : β) (l₁ l₂ : list α), foldr f b (l₁++l₂) = foldr f (foldr f b l₂) l₁
+| b nil         l₂ := rfl
+| b (cons a l₁) l₂ := congr_arg (f a) (foldr_append b l₁ l₂)
+
+end foldr
+
+section foldr_ac
+
+variable f : α → α → α
+variable [is_associative α f]
+variable [is_commutative α f]
+
+theorem foldr_trade_ac (x x' : α) (xs : list α) :
+  foldr f (f x x') xs = f x' (foldr f x xs) :=
+begin
+  induction xs with x'' xs,
+  { unfold foldr, apply is_commutative.comm },
+  { unfold foldr,
+    rw [ih_1],
+    ac_refl  }
+end
+
+theorem foldr_append_ac (x x₀ x₁ : α) (xs ys : list α)
+  (h : f x₀ x₁ = x)
+: foldr f x (xs ++ ys) = f (foldr f x₀ ys) (foldr f x₁ xs) :=
+begin
+  rw [-foldr_trade_ac f,-foldr_trade_ac f,foldr_append,h],
+end
+
+end foldr_ac
+
+/- foldl -/
+
+section foldl
+
+variable f : β → α → β
+
+theorem foldl_nil (i : β) :
+  foldl f i nil = i
+:= rfl
+
+theorem foldl_cons (i : β) (x : α) (xs : list α) :
+  foldl f i (x :: xs) = foldl f (f i x) xs
+:= rfl
+
+theorem foldl_append :
+  ∀ (a : β) (l₁ l₂ : list α), foldl f a (l₁++l₂) = foldl f (foldl f a l₁) l₂
+| a nil         l₂ := rfl
+| a (cons b l₁) l₂ := foldl_append (f a b) l₁ l₂
+
+end foldl
+
+section foldl_ac
+
+variable f : α → α → α
+variable [is_associative α f]
+variable [is_commutative α f]
+
+theorem foldl_trade_ac (x x' : α) (xs : list α) :
+  foldl f (f x x') xs = f x' (foldl f x xs) :=
+begin
+  revert x x',
+  induction xs with x'' xs,
+  { intros x x', unfold foldl, apply is_commutative.comm },
+  { intros x x',
+    unfold foldl,
+    assert h : f (f x x') x'' = f (f x x'') x',
+    { ac_refl },
+    rw [h,ih_1]  }
+end
+
+theorem foldl_append_ac (x x₀ x₁ : α) (xs ys : list α)
+  (h : f x₀ x₁ = x)
+: foldl f x (xs ++ ys) = f (foldl f x₀ xs) (foldl f x₁ ys) :=
+begin
+  rw [-foldl_trade_ac f,-foldl_trade_ac f,foldl_append,h],
+end
+
+end foldl_ac
+
+/- foldr / folrl -/
+
+theorem foldl_to_foldr {α β} (f : α → β → α) (x : α) (xs : list β) :
+  list.foldl f x xs = foldr (flip f) x (reverse xs) :=
+begin
+  revert x, induction xs with y ys H,
+  { intro x, refl },
+  { intro x,
+    unfold foldl,
+    simp [H,reverse_cons y ys,foldr_append],
+    refl, }
+end
+
+section foldl_to_foldr_ac
+
+variable f : α → α → α
+variable [is_associative α f]
+variable [is_commutative α f]
+
+theorem foldl_to_foldr_ac (x : α) (xs : list α) :
+  foldl f x xs = foldr f x xs :=
+begin
+  revert x,
+  induction xs with x' xs IH,
+  { intro, refl },
+  { intro x,
+    unfold foldr foldl,
+    rw -foldr_trade_ac f,
+    apply IH }
+end
+
+end foldl_to_foldr_ac
+
+/- map -/
 
 lemma eq_nil_of_map_eq_nil {f : α → β} {l :list α} (h : map f l = nil) : l = nil :=
 eq_nil_of_length_eq_zero (begin rw -(length_map f l), simp [h] end)
