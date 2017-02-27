@@ -181,4 +181,15 @@ match (prop_decidable (nonempty a)) with
 | (is_false hn) := psum.inr (λ a, absurd (nonempty.intro a) hn)
 end
 
+/- De Morgan's law -/
+theorem not_and_of_not_or_not {p q : Prop} (h : ¬ (p ∧ q)) : ¬p ∨ ¬q :=
+   @by_cases p _
+     ( assume h' : p, or.inr (
+          assume h'' : q,
+          show false, from h ⟨h',h''⟩ ))
+     or.inl
+
+theorem not_and_iff_not_or_not {p q : Prop} : ¬ (p ∧ q) ↔ ¬p ∨ ¬q :=
+  ⟨not_and_of_not_or_not,not_or_not_of_not_and⟩
+
 end classical
