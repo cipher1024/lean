@@ -129,13 +129,13 @@ protected lemma mul_one : ∀ (n : ℕ), n * 1 = n
 protected lemma one_mul (n : ℕ) : 1 * n = n :=
 by rw [nat.mul_comm, nat.mul_one]
 
-theorem mul_two {x : ℕ} : x + x = x * 2 :=
+theorem mul_two (x : ℕ) : x + x = x * 2 :=
 begin
   apply @eq.trans _ _ (0 + x + x),
   { rw nat.zero_add x }, { refl }
 end
 
-theorem two_mul {x : ℕ} : x + x = 2 * x :=
+theorem two_mul (x : ℕ) : x + x = 2 * x :=
 by simp [mul_two,nat.mul_comm]
 
 lemma eq_zero_or_eq_zero_of_mul_eq_zero : ∀ {n m : ℕ}, n * m = 0 → n = 0 ∨ m = 0
@@ -338,10 +338,10 @@ match le.dest h with
   end
 end
 
-lemma add_le_add_left_iff {n m : ℕ} (k : ℕ) : n ≤ m ↔ k + n ≤ k + m
+lemma add_le_add_left_iff (n m k : ℕ) : n ≤ m ↔ k + n ≤ k + m
 := ⟨assume h, nat.add_le_add_left h k,nat.le_of_add_le_add_left⟩
 
-lemma add_le_add_right_iff {n m : ℕ} (k : ℕ) : n ≤ m ↔ n + k ≤ m + k
+lemma add_le_add_right_iff (n m k : ℕ) : n ≤ m ↔ n + k ≤ m + k
 := ⟨assume h, nat.add_le_add_right h k,nat.le_of_add_le_add_right⟩
 
 protected lemma lt_of_le_and_ne {m n : ℕ} (h1 : m ≤ n) : m ≠ n → m < n :=
@@ -769,20 +769,20 @@ lemma pred_inj : ∀ {a b : nat}, a > 0 → b > 0 → nat.pred a = nat.pred b �
 
 /- div -/
 
-theorem zero_div : ∀ {m : ℕ}, 0 / m = 0
+theorem zero_div : ∀ m : ℕ, 0 / m = 0
   | zero := by refl
   | (succ n) := by refl
 
-theorem div_le_div (z : ℕ)
-: ∀ {y x}, x ≤ y → x / z ≤ y / z
-:=
+theorem div_le_div
+: ∀ {y x}, x ≤ y → ∀ z : ℕ, x / z ≤ y / z :=
   take y,
-  let P y := ∀ {x}, x ≤ y → x / z ≤ y / z in
+  let P y := ∀ {x}, x ≤ y → ∀ z : ℕ, x / z ≤ y / z in
   @well_founded.induction _ _ (measure_wf id) P y $
     take y,
     assume IH : ∀ (y' : ℕ), y' < y → P y',
     take x,
     assume h' : x ≤ y,
+    take z,
     if h : 0 < z ∧ z ≤ x then
       have Hz : 0 < z, from h^.left,
       have Hx : 0 < z ∧ z ≤ x,    from h,
@@ -806,7 +806,7 @@ theorem div_le_div (z : ℕ)
      end
 
 theorem div_pred_to_pred_div
-: ∀ {x z}, 1 ≤ z → (z * x - 1) / z = x - 1
+: ∀ (x : ℕ) {z : ℕ}, 1 ≤ z → (z * x - 1) / z = x - 1
  | zero z := assume _, begin cases z, refl, change 0 / succ a = 0 - 1, refl end
  | (succ x) z :=
     assume Pz : 1 ≤ z,
@@ -827,7 +827,7 @@ theorem div_pred_to_pred_div
 ...  = 1 + (z + z * x - 1 - z) / z   : by simp
 ...  = 1 + (z + (z * x - 1) - z) / z : by rw [@nat.add_sub_assoc _ _ Pxz]
 ...  = 1 + (z * x - 1) / z           : by rw nat.add_sub_cancel_left
-...  = 1 + (x - 1)                   : by rw [div_pred_to_pred_div Pz]
+...  = 1 + (x - 1)                   : by rw [div_pred_to_pred_div _ Pz]
 ...  = (x + 1) - 1                   : by rw [nat.add_comm x 1,@nat.add_sub_assoc _ _ Hpos]
 ...  = succ x - 1                    : by refl
    else
@@ -842,7 +842,7 @@ theorem div_pred_to_pred_div
 
 /- mod -/
 
-theorem mod_self {n : ℕ} : n % n = 0 % n :=
+theorem mod_self (n : ℕ) : n % n = 0 % n :=
       if h : 0 < n then
         have Hn_n : n ≤ n, by refl,
         by rw [mod_def,@dif_pos _ _ (and.intro h Hn_n),nat.sub_self n]
@@ -850,7 +850,7 @@ theorem mod_self {n : ℕ} : n % n = 0 % n :=
         suffices Hn_n : n = 0, by subst n,
         not_pos_of_eq_zero h
 
-theorem add_mod_self : ∀ {m n : ℕ}, (m + n) % n = m % n
+theorem add_mod_self : ∀ m n : ℕ, (m + n) % n = m % n
   | zero n := by simp [mod_self]
   | (succ m) n :=
       if h : 0 < n then
@@ -870,15 +870,14 @@ theorem mod_2_or : ∀ n, n % 2 = 0 ∨ n % 2 = 1
           show (n + 2) % 2 = 0 ∨ (n + 2) % 2 = 1,
             begin dsimp [add_mod_self], exact mod_2_or n end
 
-theorem zero_mod : ∀ {m : ℕ}, 0 % m = 0
+theorem zero_mod : ∀ m : ℕ, 0 % m = 0
   | zero := by refl
   | (succ n) := by refl
 
 /- mod / div -/
 
 theorem quot_add
-: ∀ {m k : ℕ}, (m / k) * k + m % k = m
-:=
+: ∀ m k : ℕ, (m / k) * k + m % k = m :=
   suffices ∀ {n m k : ℕ}, m ≤ n → (m / k) * k + m % k = m,
     from take m k, @this m m k $ by refl,
   take n,

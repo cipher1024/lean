@@ -173,7 +173,7 @@ lemma reverse_core_append (xs zs : list α) :
   reverse_core xs nil ++ zs = reverse_core xs zs :=
 by simp [reverse_core_append']
 
-theorem reverse_to_cons : ∀ x (xs : list α), reverse (xs ++ [x]) = x :: reverse xs
+theorem reverse_to_cons : ∀ (x : α) (xs : list α), reverse (xs ++ [x]) = x :: reverse xs
 := begin intros x xs, rw reverse_append, refl end
 
 /- last -/
@@ -388,10 +388,12 @@ section foldr
 
 variable f : α → β → β
 
+@[simp]
 theorem foldr_nil (i : β) :
   foldr f i nil = i
 := rfl
 
+@[simp]
 theorem foldr_cons (i : β) (x : α) (xs : list α) :
   foldr f i (x :: xs) = f x (foldr f i xs)
 := rfl
@@ -414,8 +416,7 @@ theorem foldr_trade_ac (x x' : α) (xs : list α) :
 begin
   induction xs with x'' xs,
   { unfold foldr, apply is_commutative.comm },
-  { unfold foldr,
-    rw [ih_1],
+  { simp [ih_1],
     ac_refl  }
 end
 
@@ -434,10 +435,12 @@ section foldl
 
 variable f : β → α → β
 
+@[simp]
 theorem foldl_nil (i : β) :
   foldl f i nil = i
 := rfl
 
+@[simp]
 theorem foldl_cons (i : β) (x : α) (xs : list α) :
   foldl f i (x :: xs) = foldl f (f i x) xs
 := rfl
@@ -462,10 +465,9 @@ begin
   induction xs with x'' xs,
   { intros x x', unfold foldl, apply is_commutative.comm },
   { intros x x',
-    unfold foldl,
     assert h : f (f x x') x'' = f (f x x'') x',
     { ac_refl },
-    rw [h,ih_1]  }
+    simp [h,ih_1]  }
 end
 
 theorem foldl_append_ac (x x₀ x₁ : α) (xs ys : list α)
@@ -485,8 +487,7 @@ begin
   revert x, induction xs with y ys H,
   { intro x, refl },
   { intro x,
-    unfold foldl,
-    simp [H,reverse_cons y ys,foldr_append],
+    simp [H,foldr_append],
     refl, }
 end
 
