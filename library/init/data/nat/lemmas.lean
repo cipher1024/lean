@@ -206,11 +206,6 @@ def succ_pos_iff_true := zero_lt_succ_iff_true
 protected lemma pos_of_ne_zero {n : nat} (h : n ≠ 0) : n > 0 :=
 begin cases n, contradiction, apply succ_pos end
 
-lemma not_pos_of_eq_zero {n : ℕ} (h : ¬ 0 < n) : n = 0 :=
-      classical.by_contradiction $
-         assume h' : ¬ n = 0, h $
-           show 0 < n, from nat.pos_of_ne_zero h'
-
 protected lemma lt_trans {n m k : ℕ} (h₁ : n < m) : m < k → n < k :=
 nat.le_trans (less_than_or_equal.step h₁)
 
@@ -245,6 +240,14 @@ le_lt_antisymm h₂ h₁
 
 protected lemma nat.lt_asymm {n m : ℕ} (h₁ : n < m) : ¬ m < n :=
 le_lt_antisymm (nat.le_of_lt h₁)
+
+lemma not_pos_of_eq_zero {n : ℕ} (h : ¬ 0 < n) : n = 0 :=
+      classical.by_contradiction $
+         assume h' : ¬ n = 0, h $
+           show 0 < n, from nat.pos_of_ne_zero h'
+
+lemma le_zero_of_eq_zero {n : ℕ} (h : n ≤ 0) : n = 0 :=
+      nat.le_antisymm h (nat.zero_le _)
 
 lemma lt_zero_iff_false (a : ℕ) : a < 0 ↔ false :=
 iff_false_intro (not_lt_zero a)
@@ -876,7 +879,7 @@ theorem zero_mod : ∀ m : ℕ, 0 % m = 0
 
 /- mod / div -/
 
-theorem quot_add
+theorem div_add_mod
 : ∀ m k : ℕ, (m / k) * k + m % k = m :=
   suffices ∀ {n m k : ℕ}, m ≤ n → (m / k) * k + m % k = m,
     from take m k, @this m m k $ by refl,
@@ -904,5 +907,11 @@ theorem quot_add
       -- case h₃ : ¬ (0 < k ∧ k ≤ m)
       { rw [div_def,dif_neg h₃,mod_def,dif_neg h₃,nat.zero_mul,nat.zero_add] } }
     end
+
+theorem mod_add_div (m k : ℕ)
+: m % k + k * (m / k) = m :=
+begin
+  rw [add_comm,mul_comm], apply div_add_mod
+end
 
 end nat

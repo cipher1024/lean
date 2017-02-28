@@ -470,6 +470,10 @@ begin
     simp [h,ih_1]  }
 end
 
+lemma foldl_cons_ac (x x₀ : α) (xs : list α) :
+  foldl f x₀ (x :: xs) = f x (foldl f x₀ xs)
+:= by simp [foldl_trade_ac f]
+
 theorem foldl_append_ac (x x₀ x₁ : α) (xs ys : list α)
   (h : f x₀ x₁ = x)
 : foldl f x (xs ++ ys) = f (foldl f x₀ xs) (foldl f x₁ ys) :=
@@ -481,8 +485,12 @@ end foldl_ac
 
 /- foldr / folrl -/
 
-theorem foldl_to_foldr {α β} (f : α → β → α) (x : α) (xs : list β) :
-  list.foldl f x xs = foldr (flip f) x (reverse xs) :=
+section foldl_to_foldr
+
+variable f : α → β → α
+
+theorem foldl_to_foldr (x : α) (xs : list β) :
+  foldl f x xs = foldr (flip f) x (reverse xs) :=
 begin
   revert x, induction xs with y ys H,
   { intro x, refl },
@@ -490,6 +498,14 @@ begin
     simp [H,foldr_append],
     refl, }
 end
+
+theorem foldl_to_cons (i : α) (x : β) (xs : list β) :
+  foldl f i (xs ++ [x]) = f (foldl f i xs) x :=
+begin
+  simp [foldl_to_foldr], refl
+end
+
+end foldl_to_foldr
 
 section foldl_to_foldr_ac
 
