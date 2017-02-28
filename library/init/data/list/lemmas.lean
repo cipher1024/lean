@@ -586,6 +586,10 @@ lemma eq_of_map_const {b₁ b₂ : β} : ∀ {l : list α}, b₁ ∈ map (functi
   : sum (x :: xs) = x + sum xs :=
   foldl_cons_ac add x 0 xs
 
+  lemma sum_singleton [add_comm_monoid α] (x : α)
+  : sum [x] = x :=
+  by simp
+
   lemma sum_append [add_comm_monoid α] (xs ys : list α)
   : sum (xs ++ ys) = sum xs + sum ys :=
   foldl_append_ac add 0 0 0 xs ys $ zero_add _
