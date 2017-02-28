@@ -38,6 +38,69 @@ by induction s; intros; contradiction
 @[simp] lemma concat_eq_append (a : α) (l : list α) : concat l a = l ++ [a] :=
 by induction l; simph [concat]
 
+lemma concat_append
+: ∀ (x : list α) (e : α) (y : list α), concat x e ++ y = x ++ e :: y
+| nil e y := rfl
+| (cons a x) e y :=
+begin
+unfold concat,
+simp [cons_append, concat_append x e y]
+end
+
+/- null -/
+
+def null (xs : list α) : Prop := xs = nil
+
+instance null_decidable : ∀ xs : list α, decidable (null xs)
+   | nil := is_true rfl
+   | (x :: xs) := is_false $ by contradiction
+
+lemma null_iff_eq_nil (xs : list α) : null xs ↔ xs = nil :=
+by refl
+
+@[simp]
+lemma null_nil : null (@nil α) ↔ true :=
+begin 
+  apply iff_true_intro,
+  simp [null_iff_eq_nil]
+end
+
+@[simp]
+lemma null_cons (x : α) (xs : list α) : null (x :: xs) ↔ false :=
+begin 
+  apply iff_false_intro,
+  contradiction
+end
+
+lemma null_of_null_append_left {xs ys : list α}
+: null (xs ++ ys) → null xs :=
+begin
+  intro h,
+  cases xs with x xs,
+  { rw null_iff_eq_nil },
+  { simp [null_iff_eq_nil] at h, contradiction }
+end
+
+lemma null_of_null_append_right {xs ys : list α}
+: null (xs ++ ys) → null ys :=
+begin
+  intro h,
+  cases ys with y ys,
+  { rw null_iff_eq_nil },
+  { simp [null_iff_eq_nil] at h,
+    rw -concat_append at h,
+    { cases xs ; unfold concat at h ; contradiction } }
+end
+
+lemma null_append {xs ys : list α}
+: null xs → null ys → null (xs ++ ys) :=
+begin
+  unfold null,
+  intros Hxs Hys,
+  subst xs, subst ys,
+  simp
+end
+
 /- head & tail -/
 
 attribute [simp] head tail
@@ -55,6 +118,9 @@ attribute [simp] repeat taken dropn
 /- length -/
 
 attribute [simp] length
+
+lemma length_nil : length (@nil α) = 0 :=
+rfl
 
 lemma length_cons (a : α) (l : list α) : length (a :: l) = length l + 1 :=
 rfl
@@ -88,6 +154,110 @@ by induction l; intros; contradiction
   length (dropn (succ i) (x::l))
           = length l - i             : length_dropn i l
       ... = succ (length l) - succ i : nat.sub_eq_succ_sub_succ (length l) i
+
+/- taken -/
+
+@[simp]
+theorem taken_zero (xs : list α) : taken 0 xs = [] := rfl
+
+@[simp]
+theorem taken_nil : ∀ (n : ℕ), taken n list.nil = @list.nil α
+| 0 := by refl
+| (nat.succ n) := by refl
+
+@[simp]
+theorem taken_succ_cons (n : ℕ) (x : α) (xs : list α) : taken (nat.succ n) (x :: xs) = x :: taken n xs := rfl
+
+@[simp]
+theorem taken_length_self : ∀ (xs : list α), taken (length xs) xs = xs
+| nil := by refl
+| (cons x xs) := by simp [taken_succ_cons, taken_length_self]
+
+@[simp]
+theorem taken_append : ∀(n : ℕ) (xs ys : list α), taken n (xs ++ ys) = taken n xs ++ taken (n - length xs) ys
+| 0 xs ys := by simp [nat.zero_sub, taken_zero]
+| (nat.succ n) nil ys :=
+begin
+  simp [nil_append, taken_nil]
+end
+| (nat.succ n) (x :: xs) ys :=
+begin
+  simp [cons_append, taken_succ_cons],
+  simp [taken_append, cons_append, nat.succ_sub_succ]
+end
+
+theorem taken_length_append (xs ys : list α) 
+: list.taken (list.length xs) (xs ++ ys) = xs :=
+by simp [nat.sub_self, list.append_nil]
+
+/- dropn -/
+
+@[simp]
+theorem dropn_zero (l : list α)
+: dropn 0 l = l := rfl
+
+@[simp]
+theorem dropn_nil 
+: ∀ (n : ℕ), dropn n nil = (nil : list α)
+| 0 := rfl
+| (nat.succ n) := rfl
+
+@[simp]
+theorem dropn_succ_cons (n : ℕ) (e : α) (l : list α)
+: dropn (nat.succ n) (e :: l) = dropn n l := rfl
+
+@[simp]
+theorem dropn_length_self : ∀ (xs : list α), dropn (length xs) xs = []
+| nil := by refl
+| (cons x xs) := by simp [dropn_succ_cons, dropn_length_self]
+
+@[simp]
+theorem dropn_append : ∀(n : ℕ) (xs ys : list α), dropn n (xs ++ ys) = dropn n xs ++ dropn (n - length xs) ys
+| 0 xs ys := by simp [nat.zero_sub, dropn_zero]
+| (nat.succ n) nil ys :=
+begin
+  simp [nil_append, dropn_nil]
+ end
+| (nat.succ n) (x :: xs) ys :=
+begin
+  simp [cons_append, dropn_succ_cons],
+  simp [dropn_append, nat.succ_sub_succ]
+ end
+
+theorem dropn_length_append (xs ys : list α) 
+: list.dropn (list.length xs) (xs ++ ys) = ys :=
+by simp [nat.sub_self]
+
+/- taken / dropn -/
+
+theorem append_taken_dropn : ∀ (n : ℕ) (l : list α), taken n l ++ dropn n l = l
+| 0            l          := rfl
+| (nat.succ n) nil        := rfl
+| (nat.succ n) (cons a l) := congr_arg (cons a) (append_taken_dropn n l)
+
+/- repeat -/
+
+@[simp]
+theorem repeat_zero (e : α)
+: repeat e 0 = nil := rfl
+
+section nat
+
+open nat
+
+theorem repeat_append_cons (x : α) (l : list α)
+: ∀ n, repeat x n ++ (x :: l) = repeat x (succ n) ++ l
+  | 0 := by refl
+  | (succ n) := calc
+    repeat x (succ n) ++ (x::l) = x :: (repeat x n ++ (x::l))   : rfl
+                     ...        = x :: (repeat x (succ n) ++ l) : by rw repeat_append_cons n
+                     ...        = repeat x (succ $ succ n) ++ l : rfl
+
+theorem append_repeat (x : α) (n : ℕ) : repeat x n ++ [x] = repeat x (succ n) :=
+by simp [ repeat_append_cons x nil n, append_nil ]
+
+
+end nat
 
 /- map -/
 
