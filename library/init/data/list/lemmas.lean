@@ -420,6 +420,15 @@ begin
     ac_refl  }
 end
 
+theorem foldr_reverse_ac (x : α) (xs : list α) :
+  foldr f x (reverse xs) = foldr f x xs :=
+begin
+  induction xs with y ys,
+  { refl },
+  { simp [foldr_append],
+    rw [is_commutative.comm f,foldr_trade_ac f,ih_1] }
+end
+
 theorem foldr_append_ac (x x₀ x₁ : α) (xs ys : list α)
   (h : f x₀ x₁ = x)
 : foldr f x (xs ++ ys) = f (foldr f x₀ ys) (foldr f x₁ xs) :=
@@ -468,6 +477,15 @@ begin
     assert h : f (f x x') x'' = f (f x x'') x',
     { ac_refl },
     simp [h,ih_1]  }
+end
+
+theorem foldl_reverse_ac (x : α) (xs : list α) :
+  foldl f x (reverse xs) = foldl f x xs :=
+begin
+  induction xs with y ys,
+  { refl },
+  { simp [foldl_append,ih_1],
+    rw [foldl_trade_ac f,is_commutative.comm f] }
 end
 
 lemma foldl_cons_ac (x x₀ : α) (xs : list α) :
@@ -557,5 +575,55 @@ lemma eq_of_map_const {b₁ b₂ : β} : ∀ {l : list α}, b₁ ∈ map (functi
   or.elim (eq_or_mem_of_mem_cons h)
     (suppose b₁ = b₂, this)
     (suppose b₁ ∈ map (function.const α b₂) l, eq_of_map_const this)
+
+/- sum -/
+
+  @[simp]
+  lemma sum_nil [add_comm_monoid α] : sum (@nil α) = 0 := rfl
+
+  @[simp]
+  lemma sum_cons [add_comm_monoid α] (x : α) (xs : list α)
+  : sum (x :: xs) = x + sum xs :=
+  foldl_cons_ac add x 0 xs
+
+  lemma sum_append [add_comm_monoid α] (xs ys : list α)
+  : sum (xs ++ ys) = sum xs + sum ys :=
+  foldl_append_ac add 0 0 0 xs ys $ zero_add _
+
+  lemma sum_reverse [add_comm_monoid α] (xs : list α)
+  : sum (reverse xs) = sum xs
+  := foldl_reverse_ac add 0 xs
+
+  lemma sum_eq_foldl [add_comm_monoid α] (xs : list α)
+  : sum xs = foldl add 0 xs := rfl
+
+  lemma sum_eq_foldr [add_comm_monoid α] (xs : list α)
+  : sum xs = foldr add 0 xs :=
+  by simp [sum_eq_foldl,foldl_to_foldr_ac]
+
+  -- The following theorem looks like it should be applicable to xs : list α with
+  --   [has_lift_t ℕ α]               -- to allow k * coe (length xs)
+  --   [ordered_cancel_comm_monoid α]
+  --   [distrib α]
+  -- except that there is no rule saying:
+  --   coe nat.zero = ordered_cancel_comm_monoid.zero
+  lemma sum_le {k : ℕ} : ∀ {xs : list ℕ},
+     (∀ i, i ∈ xs → i ≤ k) →
+     sum xs ≤ k * length xs
+   | nil _ := by simp
+   | (x :: xs) h :=
+   begin
+     simp [left_distrib],
+     -- x + sum xs ≤ k + k * length xs
+     apply add_le_add,
+     { -- x ≤ k
+       apply h,
+       apply or.inl rfl },
+     { -- sum xs ≤ k * length xs
+       apply sum_le,
+       intros i h',
+       apply h,
+       apply or.inr h' },
+   end
 
 end list
