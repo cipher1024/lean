@@ -60,14 +60,14 @@ by refl
 
 @[simp]
 lemma null_nil : null (@nil α) ↔ true :=
-begin 
+begin
   apply iff_true_intro,
   simp [null_iff_eq_nil]
 end
 
 @[simp]
 lemma null_cons (x : α) (xs : list α) : null (x :: xs) ↔ false :=
-begin 
+begin
   apply iff_false_intro,
   contradiction
 end
@@ -186,7 +186,7 @@ begin
   simp [taken_append, cons_append, nat.succ_sub_succ]
 end
 
-theorem taken_length_append (xs ys : list α) 
+theorem taken_length_append (xs ys : list α)
 : list.taken (list.length xs) (xs ++ ys) = xs :=
 by simp [nat.sub_self, list.append_nil]
 
@@ -197,7 +197,7 @@ theorem dropn_zero (l : list α)
 : dropn 0 l = l := rfl
 
 @[simp]
-theorem dropn_nil 
+theorem dropn_nil
 : ∀ (n : ℕ), dropn n nil = (nil : list α)
 | 0 := rfl
 | (nat.succ n) := rfl
@@ -224,7 +224,7 @@ begin
   simp [dropn_append, nat.succ_sub_succ]
  end
 
-theorem dropn_length_append (xs ys : list α) 
+theorem dropn_length_append (xs ys : list α)
 : list.dropn (list.length xs) (xs ++ ys) = ys :=
 by simp [nat.sub_self]
 

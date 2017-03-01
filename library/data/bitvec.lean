@@ -29,6 +29,7 @@ protected def cong {a b : ℕ} (h : a = b) : bitvec a → bitvec b
 | ⟨x, p⟩ := ⟨x, h ▸ p⟩
 
 -- bitvec specific version of vector.append
+@[reducible]
 def append {m n} : bitvec m → bitvec n → bitvec (m + n) := vector.append
 
 section shift
@@ -253,6 +254,31 @@ theorem bits_to_nat_list_of_nat
 theorem to_nat_of_nat {k n : ℕ} (h : n ≤ 2 ^ k - 1) :
    bitvec.to_nat (bitvec.of_nat k n) = n
 := by simp [to_nat_eq_bits_to_nat,bits_to_nat_list_of_nat h]
+
+theorem to_nat_of_to_bool (n : nat)
+: bitvec.to_nat [to_bool (n % 2 = 1)] = n % 2
+:=
+   or.elim (nat.mod_2_or n)
+     (assume h : n % 2 = 0, begin rw h, refl end)
+     (assume h : n % 2 = 1, begin rw h, refl end)
+
+theorem to_nat_cons_ff
+: ∀ xs : list bool, bitvec.bits_to_nat (ff :: xs) = bitvec.bits_to_nat xs :=
+  take xs,
+  begin
+    unfold bitvec.bits_to_nat,
+    assert h : add_lsb 0 ff = 0, { simp, refl },
+    simp [h]
+  end
+
+theorem to_nat_append_zero {n : ℕ}
+: ∀ {m} k : bitvec n, bitvec.to_nat (bitvec.append (bitvec.zero m) k) = bitvec.to_nat k
+  | nat.zero ⟨k, Pk⟩ := rfl
+  | (nat.succ n) ⟨k, Pk⟩ :=
+  begin
+    simp [to_nat_eq_bits_to_nat,to_nat_cons_ff],
+    apply to_nat_append_zero ⟨k,Pk⟩
+  end
 
 end bitvec
 
