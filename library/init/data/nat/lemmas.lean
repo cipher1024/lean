@@ -341,11 +341,11 @@ match le.dest h with
   end
 end
 
-lemma add_le_add_left_iff (n m k : ℕ) : n ≤ m ↔ k + n ≤ k + m
-:= ⟨assume h, nat.add_le_add_left h k,nat.le_of_add_le_add_left⟩
+lemma add_le_add_left_iff (n m k : ℕ) : k + n ≤ k + m ↔ n ≤ m
+:= ⟨nat.le_of_add_le_add_left,assume h, nat.add_le_add_left h k⟩
 
-lemma add_le_add_right_iff (n m k : ℕ) : n ≤ m ↔ n + k ≤ m + k
-:= ⟨assume h, nat.add_le_add_right h k,nat.le_of_add_le_add_right⟩
+lemma add_le_add_right_iff (n m k : ℕ) : n + k ≤ m + k ↔ n ≤ m
+:= ⟨nat.le_of_add_le_add_right,assume h, nat.add_le_add_right h k⟩
 
 protected lemma lt_of_le_and_ne {m n : ℕ} (h1 : m ≤ n) : m ≠ n → m < n :=
 or.resolve_right (or.swap (nat.eq_or_lt_of_le h1))
@@ -793,7 +793,7 @@ theorem div_le_div
       have Hxy_z : x - z ≤ y - z, from nat.sub_le_sub_right h' z,
       have Hyz_z : y - z < y,     from nat.sub_lt (lt_of_lt_of_le Hz Hy^.right) Hz,
       begin
-        rw [div_def x z,dif_pos Hx,div_def y z,dif_pos Hy,-add_le_add_right_iff] ,
+        rw [div_def x z,dif_pos Hx,div_def y z,dif_pos Hy,add_le_add_right_iff] ,
         apply IH (y - z) Hyz_z Hxy_z
       end
     else
