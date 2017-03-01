@@ -30,7 +30,7 @@ protected def cong {a b : ℕ} (h : a = b) : bitvec a → bitvec b
 
 -- bitvec specific version of vector.append
 @[reducible]
-def append {m n} : bitvec m → bitvec n → bitvec (m + n) := vector.append
+def append {m n : ℕ} : bitvec m → bitvec n → bitvec (m + n) := vector.append
 
 section shift
   variable {n : ℕ}
@@ -181,7 +181,7 @@ section conversion
     refl,
   end
 
-  protected def to_int : Π {n : nat}, bitvec n → int
+  protected def to_int : Π {n : ℕ}, bitvec n → int
   | 0        _ := 0
   | (succ n) v :=
     cond (head v)
@@ -190,14 +190,14 @@ section conversion
 
 end conversion
 
-private def to_string {n : nat} : bitvec n → string
+private def to_string {n : ℕ} : bitvec n → string
 | ⟨bs, p⟩ :=
   "0b" ++ (bs^.reverse^.for (λ b, if b then #"1" else #"0"))
 
 instance (n : nat) : has_to_string (bitvec n) :=
 ⟨to_string⟩
 
-theorem bits_to_nat_of_to_bool (n : nat)
+theorem bits_to_nat_of_to_bool (n : ℕ)
 : bitvec.bits_to_nat [to_bool (n % 2 = 1)] = n % 2
 :=
    or.elim (nat.mod_2_or n)
@@ -255,7 +255,7 @@ theorem to_nat_of_nat {k n : ℕ} (h : n ≤ 2 ^ k - 1) :
    bitvec.to_nat (bitvec.of_nat k n) = n
 := by simp [to_nat_eq_bits_to_nat,bits_to_nat_list_of_nat h]
 
-theorem to_nat_of_to_bool (n : nat)
+theorem to_nat_of_to_bool (n : ℕ)
 : bitvec.to_nat [to_bool (n % 2 = 1)] = n % 2
 :=
    or.elim (nat.mod_2_or n)
@@ -279,6 +279,16 @@ theorem to_nat_append_zero {n : ℕ}
     simp [to_nat_eq_bits_to_nat,to_nat_cons_ff],
     apply to_nat_append_zero ⟨k,Pk⟩
   end
+
+definition join : Π {m n : ℕ}, vector (bitvec m) n → bitvec (m * n) := @vector.join bool
+
+definition split : Π (m : ℕ) {n : ℕ}, bitvec (m * n) → vector (bitvec m) n := @vector.split bool
+
+@[reducible]
+definition join_list : Π {m : ℕ}, list (bitvec m) → list bool := @vector.join_list bool
+
+@[reducible]
+definition split_vector : Π {m : ℕ} (n : ℕ), bitvec (m * n) → list (bitvec m) := @vector.split_vector bool
 
 end bitvec
 
