@@ -158,21 +158,6 @@ by induction l; simph
 @[simp] lemma map_reverse (f : α → β) (l : list α) : map f (reverse l) = reverse (map f l) :=
 by induction l; simph
 
-lemma reverse_core_append' (xs ys zs : list α) :
-  reverse_core xs ys ++ zs = reverse_core xs (ys ++ zs) :=
-begin
-  revert ys,
-  induction xs with x xs H,
-  { intros, refl },
-  intros ys,
-  change reverse_core xs (x :: ys) ++ zs = _,
-  apply H,
-end
-
-lemma reverse_core_append (xs zs : list α) :
-  reverse_core xs nil ++ zs = reverse_core xs zs :=
-by simp [reverse_core_append']
-
 theorem reverse_to_cons : ∀ (x : α) (xs : list α), reverse (xs ++ [x]) = x :: reverse xs
 := begin intros x xs, rw reverse_append, refl end
 

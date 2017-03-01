@@ -136,24 +136,25 @@ end comparison
 section conversion
   variable {α : Type}
 
-  @[reducible]
   protected def list_of_nat : ℕ → ℕ → list bool
   | 0        x := list.nil
   | (succ n) x := list_of_nat n (x / 2) ++ [to_bool (x % 2 = 1)]
 
-  protected def of_nat : Π (n : ℕ), nat → bitvec n
-  | 0        x := nil
-  | (succ n) x := of_nat n (x / 2) ++ₜ [to_bool (x % 2 = 1)]
+  protected lemma length_list_of_nat : ∀ m n : ℕ,
+    list.length (bitvec.list_of_nat m n) = m
+  | 0 _ := rfl
+  | (succ m) n :=
+  begin
+    unfold list_of_nat,
+    simp [length_list_of_nat]
+  end
+
+  protected def of_nat (m n : ℕ) : bitvec m
+  := ⟨ bitvec.list_of_nat m n, bitvec.length_list_of_nat m n ⟩
 
   @[simp]
   protected lemma of_nat_to_list (m n : ℕ)
-  : (bitvec.of_nat m n)^.to_list = bitvec.list_of_nat m n :=
-  begin
-    revert n,
-    induction m with m,
-    { intro, refl },
-    { intro n, unfold list_of_nat of_nat, simp [ih_1] }
-  end
+  : (bitvec.of_nat m n)^.to_list = bitvec.list_of_nat m n := rfl
 
   protected def of_int : Π (n : ℕ), int → bitvec (succ n)
   | n (int.of_nat m)          := ff :: bitvec.of_nat n m
@@ -202,15 +203,13 @@ theorem bits_to_nat_of_to_bool (n : nat)
      (assume h : n % 2 = 0, begin rw h, refl end)
      (assume h : n % 2 = 1, begin rw h, refl end)
 
-end bitvec
-
 section list
 
 open list
 open subtype
 
-theorem bitvec.bits_to_nat_over_append (xs : list bool) (y : bool)
-:  bitvec.bits_to_nat (xs ++ [y]) = bitvec.bits_to_nat xs * 2 + bitvec.bits_to_nat [y]  :=
+theorem bits_to_nat_over_append (xs : list bool) (y : bool)
+: bitvec.bits_to_nat (xs ++ [y]) = bitvec.bits_to_nat xs * 2 + bitvec.bits_to_nat [y]  :=
       begin
         simp, unfold bitvec.bits_to_nat,
         simp [foldl_to_cons],
@@ -219,8 +218,6 @@ theorem bitvec.bits_to_nat_over_append (xs : list bool) (y : bool)
       end
 
 end list
-
-namespace bitvec
 
 lemma div_mul_sub_one_cancel {n p k : ℕ} (Hp : 1 ≤ p)
   (H : n ≤ p * p^k - 1)
@@ -234,7 +231,7 @@ end
 
 theorem bits_to_nat_list_of_nat
 : ∀ {k n : ℕ}, n ≤ 2 ^ k - 1 → bitvec.bits_to_nat (bitvec.list_of_nat k n) = n
- | zero n :=
+ | nat.zero n :=
         begin
           intro Hn_le,
           assert Hn_eq : n = 0,
