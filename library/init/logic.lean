@@ -492,6 +492,23 @@ lemma not_or {a b : Prop} : ¬ a → ¬ b → ¬ (a ∨ b)
 | hna hnb (or.inl ha) := absurd ha hna
 | hna hnb (or.inr hb) := absurd hb hnb
 
+/- Semi-de-Morgan rule -/
+theorem not_or_not_of_not_and {p q : Prop} (h : ¬p ∨ ¬q) : ¬ (p ∧ q) :=
+  assume ⟨hp, hq⟩, or.elim h
+    (assume hp', hp' hp)
+    (assume hq', hq' hq)
+
+theorem not_or_of_not_and_not {p q : Prop} (h : ¬(p ∨ q)) : ¬ p ∧ ¬ q :=
+  and.intro
+    (assume hp : p, h (show p ∨ q, from or.inl hp))
+    (assume hq : q, h (show p ∨ q, from or.inr hq))
+
+theorem not_and_not_of_not_or {p q : Prop} (h : ¬ p ∧ ¬ q) : ¬(p ∨ q) :=
+  assume h' : p ∨ q, or.elim h' (h^.left) (h^.right)
+
+theorem not_or_iff_not_and_not {p q : Prop} : ¬ (p ∨ q) ↔ ¬p ∧ ¬q :=
+  ⟨not_or_of_not_and_not,not_and_not_of_not_or⟩
+
 /- or resolution rulse -/
 
 def or.resolve_left {a b : Prop} (h : a ∨ b) (na : ¬ a) : b :=

@@ -93,6 +93,10 @@ by induction l; intros; contradiction
 
 attribute [simp] map
 
+@[simp]
+lemma map_nil (f : α → β) : map f [] = [] :=
+rfl
+
 lemma map_cons (f : α → β) (a l) : map f (a::l) = f a :: map f l :=
 rfl
 
@@ -153,6 +157,9 @@ by induction l; simph
 
 @[simp] lemma map_reverse (f : α → β) (l : list α) : map f (reverse l) = reverse (map f l) :=
 by induction l; simph
+
+theorem reverse_to_cons : ∀ (x : α) (xs : list α), reverse (xs ++ [x]) = x :: reverse xs
+:= begin intros x xs, rw reverse_append, refl end
 
 /- last -/
 
@@ -360,6 +367,171 @@ or.elim (mem_or_mem_of_mem_append this)
   (suppose a ∈ l₁, l₁subl this)
   (suppose a ∈ l₂, l₂subl this)
 
+/- foldr -/
+
+section foldr
+
+variable f : α → β → β
+
+@[simp]
+theorem foldr_nil (i : β) :
+  foldr f i nil = i
+:= rfl
+
+@[simp]
+theorem foldr_cons (i : β) (x : α) (xs : list α) :
+  foldr f i (x :: xs) = f x (foldr f i xs)
+:= rfl
+
+theorem foldr_append (f : α → β → β) :
+  ∀ (b : β) (l₁ l₂ : list α), foldr f b (l₁++l₂) = foldr f (foldr f b l₂) l₁
+| b nil         l₂ := rfl
+| b (cons a l₁) l₂ := congr_arg (f a) (foldr_append b l₁ l₂)
+
+end foldr
+
+section foldr_ac
+
+variable f : α → α → α
+variable [is_associative α f]
+variable [is_commutative α f]
+
+theorem foldr_trade_ac (x x' : α) (xs : list α) :
+  foldr f (f x x') xs = f x' (foldr f x xs) :=
+begin
+  induction xs with x'' xs,
+  { unfold foldr, apply is_commutative.comm },
+  { simp [ih_1],
+    ac_refl  }
+end
+
+theorem foldr_reverse_ac (x : α) (xs : list α) :
+  foldr f x (reverse xs) = foldr f x xs :=
+begin
+  induction xs with y ys,
+  { refl },
+  { simp [foldr_append],
+    rw [is_commutative.comm f,foldr_trade_ac f,ih_1] }
+end
+
+theorem foldr_append_ac (x x₀ x₁ : α) (xs ys : list α)
+  (h : f x₀ x₁ = x)
+: foldr f x (xs ++ ys) = f (foldr f x₀ ys) (foldr f x₁ xs) :=
+begin
+  rw [-foldr_trade_ac f,-foldr_trade_ac f,foldr_append,h],
+end
+
+end foldr_ac
+
+/- foldl -/
+
+section foldl
+
+variable f : β → α → β
+
+@[simp]
+theorem foldl_nil (i : β) :
+  foldl f i nil = i
+:= rfl
+
+@[simp]
+theorem foldl_cons (i : β) (x : α) (xs : list α) :
+  foldl f i (x :: xs) = foldl f (f i x) xs
+:= rfl
+
+theorem foldl_append :
+  ∀ (a : β) (l₁ l₂ : list α), foldl f a (l₁++l₂) = foldl f (foldl f a l₁) l₂
+| a nil         l₂ := rfl
+| a (cons b l₁) l₂ := foldl_append (f a b) l₁ l₂
+
+end foldl
+
+section foldl_ac
+
+variable f : α → α → α
+variable [is_associative α f]
+variable [is_commutative α f]
+
+theorem foldl_trade_ac (x x' : α) (xs : list α) :
+  foldl f (f x x') xs = f x' (foldl f x xs) :=
+begin
+  revert x x',
+  induction xs with x'' xs,
+  { intros x x', unfold foldl, apply is_commutative.comm },
+  { intros x x',
+    assert h : f (f x x') x'' = f (f x x'') x',
+    { ac_refl },
+    simp [h,ih_1]  }
+end
+
+theorem foldl_reverse_ac (x : α) (xs : list α) :
+  foldl f x (reverse xs) = foldl f x xs :=
+begin
+  induction xs with y ys,
+  { refl },
+  { simp [foldl_append,ih_1],
+    rw [foldl_trade_ac f,is_commutative.comm f] }
+end
+
+lemma foldl_cons_ac (x x₀ : α) (xs : list α) :
+  foldl f x₀ (x :: xs) = f x (foldl f x₀ xs)
+:= by simp [foldl_trade_ac f]
+
+theorem foldl_append_ac (x x₀ x₁ : α) (xs ys : list α)
+  (h : f x₀ x₁ = x)
+: foldl f x (xs ++ ys) = f (foldl f x₀ xs) (foldl f x₁ ys) :=
+begin
+  rw [-foldl_trade_ac f,-foldl_trade_ac f,foldl_append,h],
+end
+
+end foldl_ac
+
+/- foldr / folrl -/
+
+section foldl_to_foldr
+
+variable f : α → β → α
+
+theorem foldl_to_foldr (x : α) (xs : list β) :
+  foldl f x xs = foldr (flip f) x (reverse xs) :=
+begin
+  revert x, induction xs with y ys H,
+  { intro x, refl },
+  { intro x,
+    simp [H,foldr_append],
+    refl, }
+end
+
+theorem foldl_to_cons (i : α) (x : β) (xs : list β) :
+  foldl f i (xs ++ [x]) = f (foldl f i xs) x :=
+begin
+  simp [foldl_to_foldr], refl
+end
+
+end foldl_to_foldr
+
+section foldl_to_foldr_ac
+
+variable f : α → α → α
+variable [is_associative α f]
+variable [is_commutative α f]
+
+theorem foldl_to_foldr_ac (x : α) (xs : list α) :
+  foldl f x xs = foldr f x xs :=
+begin
+  revert x,
+  induction xs with x' xs IH,
+  { intro, refl },
+  { intro x,
+    unfold foldr foldl,
+    rw -foldr_trade_ac f,
+    apply IH }
+end
+
+end foldl_to_foldr_ac
+
+/- map -/
+
 lemma eq_nil_of_map_eq_nil {f : α → β} {l :list α} (h : map f l = nil) : l = nil :=
 eq_nil_of_length_eq_zero (begin rw -(length_map f l), simp [h] end)
 
@@ -388,5 +560,59 @@ lemma eq_of_map_const {b₁ b₂ : β} : ∀ {l : list α}, b₁ ∈ map (functi
   or.elim (eq_or_mem_of_mem_cons h)
     (suppose b₁ = b₂, this)
     (suppose b₁ ∈ map (function.const α b₂) l, eq_of_map_const this)
+
+/- sum -/
+
+  @[simp]
+  lemma sum_nil [add_comm_monoid α] : sum (@nil α) = 0 := rfl
+
+  @[simp]
+  lemma sum_cons [add_comm_monoid α] (x : α) (xs : list α)
+  : sum (x :: xs) = x + sum xs :=
+  foldl_cons_ac add x 0 xs
+
+  lemma sum_singleton [add_comm_monoid α] (x : α)
+  : sum [x] = x :=
+  by simp
+
+  lemma sum_append [add_comm_monoid α] (xs ys : list α)
+  : sum (xs ++ ys) = sum xs + sum ys :=
+  foldl_append_ac add 0 0 0 xs ys $ zero_add _
+
+  lemma sum_reverse [add_comm_monoid α] (xs : list α)
+  : sum (reverse xs) = sum xs
+  := foldl_reverse_ac add 0 xs
+
+  lemma sum_eq_foldl [add_comm_monoid α] (xs : list α)
+  : sum xs = foldl add 0 xs := rfl
+
+  lemma sum_eq_foldr [add_comm_monoid α] (xs : list α)
+  : sum xs = foldr add 0 xs :=
+  by simp [sum_eq_foldl,foldl_to_foldr_ac]
+
+  -- The following theorem looks like it should be applicable to xs : list α with
+  --   [has_lift_t ℕ α]               -- to allow k * coe (length xs)
+  --   [ordered_cancel_comm_monoid α]
+  --   [distrib α]
+  -- except that there is no rule saying:
+  --   coe nat.zero = ordered_cancel_comm_monoid.zero
+  lemma sum_le {k : ℕ} : ∀ {xs : list ℕ},
+     (∀ i, i ∈ xs → i ≤ k) →
+     sum xs ≤ k * length xs
+   | nil _ := by simp
+   | (x :: xs) h :=
+   begin
+     simp [left_distrib],
+     -- x + sum xs ≤ k + k * length xs
+     apply add_le_add,
+     { -- x ≤ k
+       apply h,
+       apply or.inl rfl },
+     { -- sum xs ≤ k * length xs
+       apply sum_le,
+       intros i h',
+       apply h,
+       apply or.inr h' },
+   end
 
 end list
