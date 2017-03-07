@@ -147,6 +147,9 @@ section conversion
   def bits_to_nat (v : list bool) : nat :=
   v^.foldl (λ r b, r + r + cond b 1 0) 0
 
+  lemma cond_to_bool_mod_two (x k : ℕ)
+  : cond (to_bool (x % 2 = 1)) k 0 = k * (x % 2) := sorry
+
   protected def to_nat {n : nat} (v : bitvec n) : nat :=
   bits_to_nat (to_list v)
 
@@ -169,3 +172,177 @@ end bitvec
 
 instance {n} {x y : bitvec n} : decidable (bitvec.ult x y) := bool.decidable_eq _ _
 instance {n} {x y : bitvec n} : decidable (bitvec.ugt x y) := bool.decidable_eq _ _
+
+-- theorem bits_to_nat_list_of_nat
+-- : ∀ {k n : ℕ}, n ≤ 2 ^ k - 1 → bitvec.bits_to_nat (bitvec.list_of_nat k n) = n
+--  | nat.zero n :=
+--         begin
+--           intro Hn_le,
+--           assert Hn_eq : n = 0,
+--           { apply nat.le_zero_of_eq_zero Hn_le },
+--           subst n, refl
+--         end
+--  | (nat.succ k) n :=
+--         begin
+--           intro H,
+--           assert H' : n / 2 ≤ 2^k - 1,
+--           { apply div_mul_sub_one_cancel (nat.le_succ _) H },
+--           unfold bitvec.list_of_nat,
+--           simp [ bitvec.bits_to_nat_over_append
+--                , bits_to_nat_list_of_nat H'
+--                , bits_to_nat_of_to_bool
+--                , nat.mod_add_div n 2 ],
+--         end
+
+-- theorem to_nat_of_nat {k n : ℕ} (h : n ≤ 2 ^ k - 1) :
+--    bitvec.to_nat (bitvec.of_nat k n) = n
+-- := by simp [to_nat_eq_bits_to_nat,bits_to_nat_list_of_nat h]
+
+open nat
+
+-- def bit_n (n k : ℕ) : bool := n % 2^succ k - n % 2^k = 2^k
+def nth_bit : ℕ → ℕ → bool
+  | 0 k := k % 2 = 1
+  | (succ n) k := nth_bit n (k / 2)
+
+def nth_bit_weight (n k : ℕ) : ℕ := cond (nth_bit n k) (2^n) 0
+
+-- lemma mod_two_eq_zero_or_one (n : ℕ) :
+
+-- lemma foo (n k : ℕ) : n % 2^succ k - n % 2^k = 2^k ∨ n % 2^succ k - n % 2^k = 0 :=
+-- begin
+--   induction k with k,
+--   { simp [mod_one],
+--     note h := @mod_lt n 2 (le_succ _),
+--     cases nat.eq_or_lt_of_le (le_of_succ_le_succ h) with h₀ h₀,
+--     { apply or.inl h₀ },
+--     cases nat.eq_or_lt_of_le (le_of_succ_le_succ h₀) with h₀ h₀,
+--     { apply or.inr h₀ },
+--     cases not_lt_zero _ h₀ },
+--   { simp }
+-- end
+
+lemma bitvec.of_nat_succ (k n : ℕ)
+: bitvec.of_nat (succ k) n = nth_bit k n :: bitvec.of_nat k n := sorry
+
+lemma bitvec.to_nat_cons {n : ℕ} (v : bitvec n) (b : bool)
+: bitvec.to_nat (b :: v) = cond b (2^n) 0 + bitvec.to_nat v := sorry
+
+lemma {u} fun_app_cond {α β : Type u} (f : α → β) (b : bool) (x y : α)
+: f (cond b x y) = cond b (f x) (f y) := sorry
+
+lemma bitvec.j {n k : ℕ} : 2^k ≤ n → n < 2^succ k → nth_bit k n = true := sorry
+
+lemma bitvec.i {n k : ℕ} : n < 2^k → nth_bit k n = false := sorry
+
+set_option pp.implicit true
+
+lemma decidable.to_bool.eq_to_iff : ∀ (p q : Prop) [dp : decidable p] [dq : decidable q]
+(h : p ↔ q), @to_bool p dp = @to_bool q dq
+  | p q dp dq Hiff :=
+   begin
+     assert h : ite p (tt) (ff) = ite q (tt) (ff),
+     { cases decidable.em p with hp hp,
+       rw [if_pos hp,if_pos (Hiff^.mp hp)],
+       rw [if_neg hp,if_neg ((not_iff_not_of_iff Hiff)^.mp hp)], },
+     unfold ite decidable.rec_on at h,
+     apply h,
+   end
+
+lemma nat.sub_div (n k p : ℕ) : (n - k) / p = n / p - (k + p - 1) / p :=
+sorry
+
+lemma nat.mul_add_div (n k p : ℕ) : (p*n + k) / p = n + k / p :=
+sorry
+
+lemma sub_pow_mod_pow (x k n : ℕ)
+  (h₀ : 0 < n)
+  (h₁ : k*n ≤ x)
+: (x - k*n) % n = x % n :=
+begin
+  induction k with k,
+  { simp },
+  { assert h₂ : k * n ≤ x,
+    { rw [succ_mul] at h₁,
+      transitivity,
+      { apply le_add_right _ n },
+      { apply h₁ } },
+    assert h₄ : x - k * n ≥ n,
+    { apply @nat.le_of_add_le_add_right (k*n),
+      rw [nat.sub_add_cancel h₂],
+      simp [succ_mul] at h₁, simp [h₁] },
+    rw [succ_mul,-nat.sub_sub,-mod_eq_sub_mod h₀ h₄,ih_1 h₂] }
+end
+
+lemma bitvec.h (k n : ℕ) (h : 2^succ k ≤ n)
+: nth_bit k (n - 2^succ k) = nth_bit k n :=
+begin
+  revert n,
+  induction k with k ; intros n h,
+  { note h' := (le_succ 1),
+    unfold nth_bit,
+    apply decidable.to_bool.eq_to_iff,
+    simp [@mod_eq_sub_mod n 2 h' h],  },
+  { assert h'' : 1 / 2 = (0 : ℕ), { refl },
+    unfold nth_bit,
+    rw [nat.sub_div,nat.add_sub_assoc,pow_succ,nat.mul_add_div],
+    simp [h''],
+    apply ih_1,
+    { apply indirect_le_right,
+      intros z h''',
+      rw le_div_iff_mul_le,
+      transitivity,
+      { apply mul_le_mul_right _ h''' },
+      { dsimp at h, simp [h] },
+      apply le_succ },
+    apply le_succ }
+end
+
+-- lemma foo (p m n : ℕ) : ∃ k, p^m = k*p^n := sorry
+
+
+lemma nth_bit_weight_add_mod (p n : ℕ)
+: nth_bit_weight n p + p % (2^n) = p % (2^succ n) :=
+begin
+  unfold nth_bit_weight,
+  apply nat.strong_induction_on p,
+  clear p,
+  intros p IH,
+  cases lt_or_ge p (2^succ n) with h₁ h₁,
+  -- base case
+  { rw [mod_eq_of_lt h₁],
+    cases lt_or_ge p (2^n) with h₂ h₂,
+    -- case n < 2^k
+    { simp [mod_eq_of_lt h₂,bitvec.i h₂], refl },
+    -- case n ≥ 2^k
+    { assert h₃ : p - 2^n < 2^n,
+      { apply @nat.lt_of_add_lt_add_right (2^n),
+        rw [nat.sub_add_cancel h₂],
+        simp [succ_mul] at h₁,
+        apply h₁ },
+      assert h₄ : 0 < 2^n, { apply pos_pow_succ },
+      simp [mod_eq_sub_mod h₄ h₂,mod_eq_of_lt h₃,bitvec.j h₂ h₁],
+      unfold decidable.to_bool cond,
+      rw [nat.sub_add_cancel h₂] } },
+  -- step
+  { assert h₀ : 2^succ n > 0, { apply pos_pow_succ },
+    assert h₂ : p - 2^succ n < p,
+    { apply @nat.lt_of_add_lt_add_right (2^succ n),
+      rw [nat.sub_add_cancel h₁],
+      apply lt_add_of_pos_right _ h₀ },
+    rw [mod_eq_sub_mod h₀ h₁,-IH _ h₂],
+    apply congr, apply congr_arg,
+    { rw bitvec.h _ _ h₁  },
+    { rw [pow_succ,sub_pow_mod_pow],
+      apply pos_pow_succ,
+      apply h₁ } },
+end
+
+theorem to_nat_of_nat {k n : ℕ} :
+   bitvec.to_nat (bitvec.of_nat k n) = n % 2^k :=
+begin
+  induction k with k,
+  { unfold pow, simp [nat.mod_one], refl },
+  { simp [bitvec.of_nat_succ,bitvec.to_nat_cons,ih_1],
+    rw [add_comm], apply nth_bit_weight_add_mod, }
+end

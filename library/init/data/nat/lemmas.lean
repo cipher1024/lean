@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Leonardo de Moura, Jeremy Avigad
 -/
 prelude
-import init.data.nat.basic init.data.nat.div init.meta init.algebra.functions
+import init.data.nat.basic init.data.nat.div init.data.nat.pow init.meta init.algebra.functions
 
 namespace nat
 attribute [pre_smt] nat_zero_eq_zero
@@ -314,6 +314,15 @@ match le.dest h with
   end
 end
 
+protected lemma le_of_add_le_add_right {k n m : ℕ} : n + k ≤ m + k → n ≤ m :=
+  begin
+    rw [nat.add_comm _ k,nat.add_comm _ k],
+    apply nat.le_of_add_le_add_left
+  end
+
+protected lemma add_le_add_iff_le_right (k n m : ℕ) : n + k ≤ m + k ↔ n ≤ m :=
+  ⟨ nat.le_of_add_le_add_right , take h, nat.add_le_add_right h _ ⟩
+
 protected lemma lt_of_le_and_ne {m n : ℕ} (h1 : m ≤ n) : m ≠ n → m < n :=
 or.resolve_right (or.swap (nat.eq_or_lt_of_le h1))
 
@@ -322,6 +331,11 @@ let h' := nat.le_of_lt h in
 nat.lt_of_le_and_ne
   (nat.le_of_add_le_add_left h')
   (λ heq, nat.lt_irrefl (k + m) begin rw heq at h, assumption end)
+
+protected theorem lt_of_add_lt_add_right {k n m : ℕ} : n + k < m + k → n < m :=
+begin
+  rw [@nat.add_comm _ k,@nat.add_comm _ k], apply nat.lt_of_add_lt_add_left
+end
 
 protected lemma add_lt_add_left {n m : ℕ} (h : n < m) (k : ℕ) : k + n < k + m :=
 lt_of_succ_le (add_succ k n ▸ nat.add_le_add_left (succ_le_of_lt h) k)
@@ -690,6 +704,36 @@ exists.elim (nat.le.dest h)
   (take l, assume hl : k + l = m,
     by rw [-hl, nat.add_sub_cancel_left, add_comm k, -add_assoc, nat.add_sub_cancel])
 
+theorem le_of_le_of_sub_le_sub_right {n m k : ℕ}
+  (h₀ : k ≤ m)
+  (h₁ : n - k ≤ m - k)
+: n ≤ m :=
+begin
+  revert k m,
+  induction n with n ; intros k m h₀ h₁,
+  { apply zero_le },
+  { cases k with k,
+    { apply h₁ },
+    cases m with m,
+    { cases not_succ_le_zero _ h₀ },
+    { simp [succ_sub_succ] at h₁,
+      apply succ_le_succ,
+      apply ih_1 _ h₁,
+      apply le_of_succ_le_succ h₀ }, }
+end
+
+protected theorem sub_le_sub_right_iff (n m k : ℕ)
+  (h : k ≤ m)
+: n - k ≤ m - k ↔ n ≤ m :=
+⟨ le_of_le_of_sub_le_sub_right h , assume h, nat.sub_le_sub_right h k ⟩
+
+theorem add_le_to_le_sub (x : ℕ) {y k : ℕ}
+  (h : k ≤ y)
+: x + k ≤ y ↔ x ≤ y - k :=
+begin
+  rw [-nat.add_sub_cancel x k,nat.sub_le_sub_right_iff _ _ _ h,nat.add_sub_cancel]
+end
+
 @[simp] lemma min_zero_left (a : ℕ) : min 0 a = 0 :=
 min_eq_left (zero_le a)
 
@@ -827,6 +871,48 @@ begin
   { rw [div_def, mod_def, if_neg h', if_neg h'], simp },
 end
 
+-- this is a Galois connection with
+--   f x = x * k
+--   g y = y / k
+theorem le_div_iff_mul_le (x y : ℕ) {k : ℕ}
+  (Hk : k > 0)
+: x ≤ y / k ↔ x * k ≤ y :=
+begin
+  -- Hk is needed because, despite div being made total, y / 0 := 0
+  --     x * 0 ≤ y ↔ x ≤ y / 0
+  --   ↔ 0 ≤ y ↔ x ≤ 0
+  --   ↔ true ↔ x = 0
+  --   ↔ x = 0
+  revert x,
+  apply well_founded.induction lt_wf y _,
+  { clear y,
+    intros y IH x,
+    cases decidable.em (k ≤ y) with h h,
+    -- step: k ≤ y
+    { note h' := and.intro Hk h,
+      rw [div_def,if_pos h'],
+      cases x with x,
+      { simp [zero_mul,zero_le_iff_true] },
+      { assert Hlt : y - k < y,
+        { apply sub_lt _ Hk,
+          apply lt_of_lt_of_le Hk h },
+        change _ + 1 ≤ _ + 1 ↔ _,
+        rw [ nat.add_le_add_iff_le_right
+           , IH (y - k) Hlt x
+           , succ_mul,add_le_to_le_sub _ h] } },
+    -- base case: y < k
+    { assert h' : ¬ (0 < k ∧ k ≤ y),
+      { apply mt _ h, apply and.right },
+      rw [div_def,if_neg h'],
+      cases x with x,
+      { simp [zero_mul,zero_le_iff_true] },
+      { simp [succ_mul,succ_le_zero_iff_false],
+        apply not_le_of_gt,
+        apply lt_of_lt_of_le,
+        { apply lt_of_not_ge h },
+        { apply le_add_right } } } }
+end
+
 /- div -/
 
 protected lemma div_one (n : ℕ) : n / 1 = n :=
@@ -852,5 +938,29 @@ protected lemma div_le_self : ∀ (m n : ℕ), m / n ≤ m
     m  = 1 * m      : by simp
    ... ≤ succ n * m : mul_le_mul_right _ (succ_le_succ (zero_le _)),
   nat.div_le_of_le_mul this
+
+/- pow -/
+
+lemma pos_pow_of_pos {b : ℕ} : ∀ (n : ℕ) (h : 0 < b), 0 < b^n
+  | 0 _ := nat.le_refl _
+  | (succ n) h :=
+   begin
+     rw -mul_zero 0,
+     apply mul_lt_mul h (pos_pow_of_pos _ h),
+     apply nat.le_refl,
+     apply zero_le
+   end
+
+lemma pos_pow_succ {b : ℕ} (n : ℕ) : 0 < succ b^n :=
+  pos_pow_of_pos _ (zero_lt_succ _)
+
+lemma pow_add (m n p : ℕ) : p^m * p^n = p^(m+n) :=
+begin
+  induction m with m,
+  { simp },
+  { simp at ih_1, simp [succ_add,ih_1] }
+end
+
+-- lemma pow_mul :
 
 end nat

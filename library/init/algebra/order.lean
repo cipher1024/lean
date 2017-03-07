@@ -207,6 +207,9 @@ match lt_trichotomy a b with
 | or.inr (or.inr hgt) := or.inr hgt
 end
 
+lemma indirect_le_right [weak_order α] {x y : α} (h : ∀ z, z ≤ x → z ≤ y) : x ≤ y :=
+  h _ (le_refl _)
+
 /- The following lemma can be used when defining a decidable_linear_order instance, and the concrete structure
    does not have its own definition for decidable le  -/
 def decidable_le_of_decidable_lt [linear_strong_order_pair α] [∀ a b : α, decidable (a < b)] (a b : α) : decidable (a ≤ b) :=
